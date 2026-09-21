@@ -83,8 +83,8 @@ constexpr const char *BASE_TOPIC = Secret::MQTT_BASE_TOPIC;
 constexpr const char *CLIENT_PREFIX = Secret::MQTT_CLIENT_PREFIX;
 constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
 
-// Pembagi W/VAR/VA sebelum dikirim sebagai kW/kVAR/kVA.
-constexpr float POWER_DIVISOR = 1000.0f;
+// Pembagi W/VAR/VA (1.0f = satuan Watt/VAR/VA, 1000.0f = kW/kVAR/kVA).
+constexpr float POWER_DIVISOR = 1.0f;
 static_assert(POWER_DIVISOR > 0.0f, "POWER_DIVISOR harus lebih dari 0");
 }  // namespace Mqtt
 

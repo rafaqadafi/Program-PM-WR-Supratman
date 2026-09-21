@@ -32,7 +32,7 @@ void mqttEventHandler(void *, esp_event_base_t, int32_t eventId,
       mqttConnected.store(true);
       ledStatusSetMqttConnected(true);
       const int messageId = esp_mqtt_client_publish(
-          event->client, statusTopic, "online", 0, 0, 1);
+          event->client, statusTopic, "{\"status\":\"ONLINE\"}", 0, 0, 1);
       Serial.printf("[MQTT] Terhubung ke broker WSS; status %s\n",
                     messageId >= 0 ? "terkirim" : "gagal dikirim");
       break;
@@ -90,7 +90,7 @@ bool startMqttClient() {
                             ? Config::Mqtt::PASSWORD
                             : nullptr;
   mqttConfig.lwt_topic = statusTopic;
-  mqttConfig.lwt_msg = "offline";
+  mqttConfig.lwt_msg = "{\"status\":\"OFFLINE\"}";
   mqttConfig.lwt_qos = 0;
   mqttConfig.lwt_retain = 1;
   mqttConfig.keepalive = 30;
@@ -129,102 +129,51 @@ bool startMqttClient() {
 }
 
 bool publishMeterData(const MeterData &data) {
-  if (!mqttConnected.load() || mqttClient == nullptr) return false;
-
-  char topic[96];
-  char *payload = (char *)malloc(1200);
-  if (payload == nullptr) {
-    Serial.println("[MQTT] Malloc gagal");
+  if (!mqttConnected.load() || mqttClient == nullptr || !data.online ||
+      !data.dataReady) {
     return false;
   }
 
-  snprintf(topic, sizeof(topic), "%s/data", Config::Mqtt::BASE_TOPIC);
+  char topic[96];
+  snprintf(topic, sizeof(topic), "%s/telemetry", Config::Mqtt::BASE_TOPIC);
 
-  const char *meterStatus = !data.online       ? "OFFLINE"
-                            : !data.dataReady ? "WAITING"
-                                              : "ONLINE";
-  int length;
+  char payload[768];
+  const int length = snprintf(
+      payload, sizeof(payload),
+      "{\"phaseA\":{\"voltage\":%.1f,\"current\":%.2f,\"frequency\":%.2f,"
+      "\"phaseAngle\":0.0,\"activePower\":%.1f,\"reactivePower\":%.1f,"
+      "\"apparentPower\":%.1f,\"energy\":0.0},"
+      "\"phaseB\":{\"voltage\":%.1f,\"current\":%.2f,\"frequency\":%.2f,"
+      "\"phaseAngle\":120.0,\"activePower\":%.1f,\"reactivePower\":%.1f,"
+      "\"apparentPower\":%.1f,\"energy\":0.0},"
+      "\"phaseC\":{\"voltage\":%.1f,\"current\":%.2f,\"frequency\":%.2f,"
+      "\"phaseAngle\":240.0,\"activePower\":%.1f,\"reactivePower\":%.1f,"
+      "\"apparentPower\":%.1f,\"energy\":0.0},"
+      "\"total\":{\"activePower\":%.1f,\"reactivePower\":%.1f,"
+      "\"apparentPower\":%.1f,\"powerFactor\":%.2f,\"energy\":%.3f}}",
+      data.phase[0].voltage, data.phase[0].current,
+      data.phase[0].frequency,
+      data.phase[0].activePower / Config::Mqtt::POWER_DIVISOR,
+      data.phase[0].reactivePower / Config::Mqtt::POWER_DIVISOR,
+      data.phase[0].apparentPower / Config::Mqtt::POWER_DIVISOR,
+      data.phase[1].voltage, data.phase[1].current,
+      data.phase[1].frequency,
+      data.phase[1].activePower / Config::Mqtt::POWER_DIVISOR,
+      data.phase[1].reactivePower / Config::Mqtt::POWER_DIVISOR,
+      data.phase[1].apparentPower / Config::Mqtt::POWER_DIVISOR,
+      data.phase[2].voltage, data.phase[2].current,
+      data.phase[2].frequency,
+      data.phase[2].activePower / Config::Mqtt::POWER_DIVISOR,
+      data.phase[2].reactivePower / Config::Mqtt::POWER_DIVISOR,
+      data.phase[2].apparentPower / Config::Mqtt::POWER_DIVISOR,
+      data.totalActive / Config::Mqtt::POWER_DIVISOR,
+      data.totalReactive / Config::Mqtt::POWER_DIVISOR,
+      data.totalApparent / Config::Mqtt::POWER_DIVISOR,
+      data.powerFactor,
+      data.totalEnergy);
 
-  if (!data.online || !data.dataReady) {
-    length = snprintf(
-        payload, 1200,
-        "{\"slave\":%u,\"status\":\"%s\",\"online\":%s,"
-        "\"dataReady\":%s}",
-        data.slave, meterStatus,
-        data.online ? "true" : "false",
-        data.dataReady ? "true" : "false");
-  } else {
-    length = snprintf(
-        payload, 1200,
-        "{"
-        "\"slave\":%u,"
-        "\"status\":\"%s\","
-        "\"online\":true,"
-        "\"dataReady\":true,"
-        "\"phaseA\":{"
-        "\"voltage\":%.2f,"
-        "\"current\":%.2f,"
-        "\"frequency\":%.2f,"
-        "\"phaseAngle\":\"no_value\","
-        "\"activePower\":%.3f,"
-        "\"reactivePower\":%.3f,"
-        "\"apparentPower\":%.3f,"
-        "\"energy\":\"no_value\""
-        "},"
-        "\"phaseB\":{"
-        "\"voltage\":%.2f,"
-        "\"current\":%.2f,"
-        "\"frequency\":%.2f,"
-        "\"phaseAngle\":\"no_value\","
-        "\"activePower\":%.3f,"
-        "\"reactivePower\":%.3f,"
-        "\"apparentPower\":%.3f,"
-        "\"energy\":\"no_value\""
-        "},"
-        "\"phaseC\":{"
-        "\"voltage\":%.2f,"
-        "\"current\":%.2f,"
-        "\"frequency\":%.2f,"
-        "\"phaseAngle\":\"no_value\","
-        "\"activePower\":%.3f,"
-        "\"reactivePower\":%.3f,"
-        "\"apparentPower\":%.3f,"
-        "\"energy\":\"no_value\""
-        "},"
-        "\"total\":{"
-        "\"activePower\":%.3f,"
-        "\"reactivePower\":%.3f,"
-        "\"apparentPower\":%.3f,"
-        "\"powerFactor\":%.2f,"
-        "\"energy\":%.3f"
-        "}"
-        "}",
-        data.slave, meterStatus,
-        data.phase[0].voltage, data.phase[0].current,
-        data.phase[0].frequency,
-        data.phase[0].activePower / Config::Mqtt::POWER_DIVISOR,
-        data.phase[0].reactivePower / Config::Mqtt::POWER_DIVISOR,
-        data.phase[0].apparentPower / Config::Mqtt::POWER_DIVISOR,
-        data.phase[1].voltage, data.phase[1].current,
-        data.phase[1].frequency,
-        data.phase[1].activePower / Config::Mqtt::POWER_DIVISOR,
-        data.phase[1].reactivePower / Config::Mqtt::POWER_DIVISOR,
-        data.phase[1].apparentPower / Config::Mqtt::POWER_DIVISOR,
-        data.phase[2].voltage, data.phase[2].current,
-        data.phase[2].frequency,
-        data.phase[2].activePower / Config::Mqtt::POWER_DIVISOR,
-        data.phase[2].reactivePower / Config::Mqtt::POWER_DIVISOR,
-        data.phase[2].apparentPower / Config::Mqtt::POWER_DIVISOR,
-        data.totalActive / Config::Mqtt::POWER_DIVISOR,
-        data.totalReactive / Config::Mqtt::POWER_DIVISOR,
-        data.totalApparent / Config::Mqtt::POWER_DIVISOR,
-        data.powerFactor,
-        data.totalEnergy);
-  }
-
-  if (length < 0 || length >= 1200) {
+  if (length < 0 || length >= static_cast<int>(sizeof(payload))) {
     Serial.println("[MQTT] Payload overflow");
-    free(payload);
     return false;
   }
 
@@ -234,7 +183,6 @@ bool publishMeterData(const MeterData &data) {
   Serial.printf("[MQTT] Publish %s: %s\n", topic,
                 published ? "berhasil" : "gagal");
   if (published) ledStatusNotifyUploadSuccess();
-  free(payload);
   return published;
 }
 
