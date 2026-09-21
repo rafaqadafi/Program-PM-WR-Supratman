@@ -141,16 +141,16 @@ bool publishMeterData(const MeterData &data) {
   const int length = snprintf(
       payload, sizeof(payload),
       "{\"phaseA\":{\"voltage\":%.1f,\"current\":%.2f,\"frequency\":%.2f,"
-      "\"phaseAngle\":0.0,\"activePower\":%.1f,\"reactivePower\":%.1f,"
-      "\"apparentPower\":%.1f,\"energy\":0.0},"
+      "\"phaseAngle\":0.0,\"activePower\":%.3f,\"reactivePower\":%.3f,"
+      "\"apparentPower\":%.3f,\"energy\":0.0},"
       "\"phaseB\":{\"voltage\":%.1f,\"current\":%.2f,\"frequency\":%.2f,"
-      "\"phaseAngle\":120.0,\"activePower\":%.1f,\"reactivePower\":%.1f,"
-      "\"apparentPower\":%.1f,\"energy\":0.0},"
+      "\"phaseAngle\":120.0,\"activePower\":%.3f,\"reactivePower\":%.3f,"
+      "\"apparentPower\":%.3f,\"energy\":0.0},"
       "\"phaseC\":{\"voltage\":%.1f,\"current\":%.2f,\"frequency\":%.2f,"
-      "\"phaseAngle\":240.0,\"activePower\":%.1f,\"reactivePower\":%.1f,"
-      "\"apparentPower\":%.1f,\"energy\":0.0},"
-      "\"total\":{\"activePower\":%.1f,\"reactivePower\":%.1f,"
-      "\"apparentPower\":%.1f,\"powerFactor\":%.2f,\"energy\":%.3f}}",
+      "\"phaseAngle\":240.0,\"activePower\":%.3f,\"reactivePower\":%.3f,"
+      "\"apparentPower\":%.3f,\"energy\":0.0},"
+      "\"total\":{\"activePower\":%.3f,\"reactivePower\":%.3f,"
+      "\"apparentPower\":%.3f,\"powerFactor\":%.2f,\"energy\":%.3f}}",
       data.phase[0].voltage, data.phase[0].current,
       data.phase[0].frequency,
       data.phase[0].activePower / Config::Mqtt::POWER_DIVISOR,
