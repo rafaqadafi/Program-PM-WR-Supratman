@@ -144,10 +144,10 @@ bool publishMeterData(const MeterData &data) {
       "\"phaseAngle\":0.0,\"activePower\":%.3f,\"reactivePower\":%.3f,"
       "\"apparentPower\":%.3f,\"energy\":0.0},"
       "\"phaseB\":{\"voltage\":%.1f,\"current\":%.2f,\"frequency\":%.2f,"
-      "\"phaseAngle\":120.0,\"activePower\":%.3f,\"reactivePower\":%.3f,"
+      "\"phaseAngle\":0.0,\"activePower\":%.3f,\"reactivePower\":%.3f,"
       "\"apparentPower\":%.3f,\"energy\":0.0},"
       "\"phaseC\":{\"voltage\":%.1f,\"current\":%.2f,\"frequency\":%.2f,"
-      "\"phaseAngle\":240.0,\"activePower\":%.3f,\"reactivePower\":%.3f,"
+      "\"phaseAngle\":0.0,\"activePower\":%.3f,\"reactivePower\":%.3f,"
       "\"apparentPower\":%.3f,\"energy\":0.0},"
       "\"total\":{\"activePower\":%.3f,\"reactivePower\":%.3f,"
       "\"apparentPower\":%.3f,\"powerFactor\":%.2f,\"energy\":%.3f}}",
