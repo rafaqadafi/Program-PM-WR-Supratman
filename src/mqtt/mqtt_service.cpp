@@ -9,7 +9,6 @@
 #include "config.h"
 #include "led/led_status.h"
 #include "modbus/modbus_rtu.h"
-#include "thingspeak/thingspeak_service.h"
 
 extern "C" esp_err_t esp_crt_bundle_attach(void *conf);
 
@@ -209,7 +208,6 @@ void mqttTask(void *) {
   }
 
   uint32_t publishedSequence = 0;
-  uint32_t previousThingSpeak = millis();
   bool previousWifiConnected = true;
   uint32_t continuousDisconnectStart = 0;
 
@@ -251,21 +249,6 @@ void mqttTask(void *) {
       if (modbusRtuGetLatest(data, sequence) && sequence != publishedSequence &&
           publishMeterData(data)) {
         publishedSequence = sequence;
-      }
-    }
-
-    if (currentWifiConnected &&
-        millis() - previousThingSpeak >=
-            Config::ThingSpeak::UPDATE_INTERVAL_MS) {
-      MeterData thingSpeakData{};
-      uint32_t ignoredSequence = 0;
-      if (modbusRtuGetLatest(thingSpeakData, ignoredSequence) &&
-          thingSpeakData.dataReady) {
-        previousThingSpeak = millis();
-        ledStatusSetUploading(true);
-        const bool tsSuccess = thingSpeakUpdate(thingSpeakData);
-        ledStatusSetUploading(false);
-        ledStatusSetThingSpeakHealthy(tsSuccess);
       }
     }
 

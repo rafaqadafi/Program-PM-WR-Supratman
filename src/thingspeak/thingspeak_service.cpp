@@ -1,11 +1,13 @@
 #include "thingspeak_service.h"
 
 #include <Arduino.h>
-#include <WiFiClientSecure.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <string.h>
 
 #include "config.h"
+#include "led/led_status.h"
+#include "modbus/modbus_rtu.h"
 
 namespace {
 constexpr char THINGSPEAK_HOST[] = "api.thingspeak.com";
@@ -16,24 +18,12 @@ float averageVoltage(const MeterData &data) {
           data.phase[2].voltage) /
          3.0f;
 }
-}  // namespace
 
-bool thingSpeakUpdate(const MeterData &data) {
-  if (!Config::ThingSpeak::ENABLED ||
-      strlen(Config::ThingSpeak::WRITE_API_KEY) == 0 ||
-      strcmp(Config::ThingSpeak::WRITE_API_KEY, "ISI_WRITE_API_KEY") == 0) {
-    return false;
-  }
-
-  if (!data.online || !data.dataReady || WiFi.status() != WL_CONNECTED) {
-    return false;
-  }
-
+bool thingSpeakUpload(const MeterData &data) {
   WiFiClientSecure client;
-  // Enkripsi HTTPS aktif; validasi CA dapat ditambahkan jika sertifikat CA
-  // root disimpan di konfigurasi produk.
   client.setInsecure();
   client.setTimeout(10000);
+
   if (!client.connect(THINGSPEAK_HOST, THINGSPEAK_PORT)) {
     Serial.println("[ThingSpeak] Koneksi HTTPS gagal");
     return false;
@@ -57,6 +47,7 @@ bool thingSpeakUpdate(const MeterData &data) {
   }
 
   client.print(request);
+
   char statusLine[64] = {};
   const size_t statusLength =
       client.readBytesUntil('\n', statusLine, sizeof(statusLine) - 1);
@@ -64,12 +55,49 @@ bool thingSpeakUpdate(const MeterData &data) {
   const bool accepted = strstr(statusLine, " 200 ") != nullptr;
 
   const uint32_t startedAt = millis();
-  while (client.connected() && millis() - startedAt < 10000UL) {
+  while (client.connected() && millis() - startedAt < 3000UL) {
     while (client.available()) client.read();
     vTaskDelay(pdMS_TO_TICKS(10));
   }
   client.stop();
+
   Serial.printf("[ThingSpeak] Update 8 field %s\n",
                 accepted ? "berhasil" : "ditolak");
   return accepted;
+}
+
+void thingspeakTask(void *) {
+  // Tunggu hingga WiFi terhubung
+  while (WiFi.status() != WL_CONNECTED) {
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+
+  // Tunda eksekusi pertama 30 detik agar MQTT dapat terhubung lebih dahulu tanpa rebutan memori TLS
+  vTaskDelay(pdMS_TO_TICKS(30000));
+
+  for (;;) {
+    if (Config::ThingSpeak::ENABLED &&
+        strlen(Config::ThingSpeak::WRITE_API_KEY) > 0 &&
+        strcmp(Config::ThingSpeak::WRITE_API_KEY, "ISI_WRITE_API_KEY") != 0 &&
+        WiFi.status() == WL_CONNECTED) {
+
+      MeterData data{};
+      uint32_t sequence = 0;
+      if (modbusRtuGetLatest(data, sequence) && data.online && data.dataReady) {
+        ledStatusSetUploading(true);
+        const bool tsSuccess = thingSpeakUpload(data);
+        ledStatusSetUploading(false);
+        ledStatusSetThingSpeakHealthy(tsSuccess);
+      }
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(Config::ThingSpeak::UPDATE_INTERVAL_MS));
+  }
+}
+}  // namespace
+
+void thingspeakServiceBegin() {
+  // Task ThingSpeak berjalan independen di Core 0 Priority 1
+  // Tidak membebani Core 1 yang didedikasikan untuk Modbus RTU dan MQTT
+  xTaskCreatePinnedToCore(thingspeakTask, "ThingSpeak", 8192, nullptr, 1, nullptr, 0);
 }

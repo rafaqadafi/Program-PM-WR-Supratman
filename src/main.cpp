@@ -8,6 +8,7 @@
 #include "modbus/modbus_rtu.h"
 #include "mqtt/mqtt_service.h"
 #include "ota/ota_service.h"
+#include "thingspeak/thingspeak_service.h"
 #include "wifi/wifi_service.h"
 
 void setup() {
@@ -41,6 +42,7 @@ void setup() {
   hermesAlertBegin();
   modbusRtuBegin();
   mqttServiceBegin();
+  thingspeakServiceBegin();
   otaServiceBegin();
 
   // Hardware Task Watchdog Timer diaktifkan setelah seluruh layanan siap
