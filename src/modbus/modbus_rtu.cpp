@@ -220,6 +220,11 @@ void modbusTask(void *) {
                 Config::Pins::MODBUS_RX, Config::Pins::MODBUS_TX);
 
   for (;;) {
+    if (WiFi.status() != WL_CONNECTED) {
+      vTaskDelay(pdMS_TO_TICKS(500));
+      continue;
+    }
+
     MeterData data{};
     readMeter(data);
     ledStatusSetModbusHealthy(data.online && data.dataReady);

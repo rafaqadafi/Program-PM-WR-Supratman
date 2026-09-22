@@ -1,4 +1,4 @@
-#include <Arduino.h>
+#include <WiFi.h>
 #include <esp_task_wdt.h>
 
 #include "config.h"
@@ -20,14 +20,29 @@ void setup() {
   Serial.printf("\nESP32 %s - FreeRTOS\n", Config::Project::NAME);
   Serial.println("Ketik RW: reset WiFi | TW: test Watchdog freeze | TA: test alert Hermes");
 
-  // Hardware Task Watchdog Timer
+  ledStatusBegin();
+  wifiResetButtonBegin();
+  wifiServiceBegin();
+
+  // Menunggu koneksi WiFi sebelum program lain boleh berjalan
+  Serial.println("[System] Menunggu koneksi WiFi...");
+  while (WiFi.status() != WL_CONNECTED) {
+    if (Serial.available() > 0) {
+      const char c = static_cast<char>(Serial.read());
+      if (c == 'R' || c == 'r') {
+        Serial.println("[Serial] Perintah reset WiFi...");
+        wifiServiceResetSettingsAndRestart();
+      }
+    }
+    delay(100);
+  }
+  Serial.println("[System] WiFi terhubung! Menjalankan layanan lainnya...");
+
+  // Hardware Task Watchdog Timer diinisialisasi setelah WiFi terhubung
   esp_task_wdt_init(Config::Watchdog::TIMEOUT_SECONDS, true);
   esp_task_wdt_add(NULL);
 
   hermesAlertBegin();
-  ledStatusBegin();
-  wifiServiceBegin();
-  wifiResetButtonBegin();
   modbusRtuBegin();
   mqttServiceBegin();
   otaServiceBegin();
