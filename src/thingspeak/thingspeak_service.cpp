@@ -33,7 +33,7 @@ bool thingSpeakUpdate(const MeterData &data) {
   // Enkripsi HTTPS aktif; validasi CA dapat ditambahkan jika sertifikat CA
   // root disimpan di konfigurasi produk.
   client.setInsecure();
-  client.setTimeout(10);
+  client.setTimeout(10000);
   if (!client.connect(THINGSPEAK_HOST, THINGSPEAK_PORT)) {
     Serial.println("[ThingSpeak] Koneksi HTTPS gagal");
     return false;
