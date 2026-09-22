@@ -56,6 +56,8 @@ void wifiTask(void *) {
       previousStatus = currentStatus;
       if (currentStatus == WL_CONNECTED) {
         Serial.println("[WiFi] Terhubung!");
+        Serial.printf("[WiFi] SSID    : %s\n", WiFi.SSID().c_str());
+        Serial.printf("[WiFi] RSSI    : %d dBm\n", WiFi.RSSI());
         Serial.printf("[WiFi] IP      : %s\n", WiFi.localIP().toString().c_str());
         Serial.printf("[WiFi] Gateway : %s\n", WiFi.gatewayIP().toString().c_str());
         Serial.printf("[WiFi] Subnet  : %s\n", WiFi.subnetMask().toString().c_str());

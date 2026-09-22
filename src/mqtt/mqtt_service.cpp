@@ -33,8 +33,8 @@ void mqttEventHandler(void *, esp_event_base_t, int32_t eventId,
       ledStatusSetMqttConnected(true);
       const int messageId = esp_mqtt_client_publish(
           event->client, statusTopic, "{\"status\":\"ONLINE\"}", 0, 0, 1);
-      Serial.printf("[MQTT] Terhubung ke broker WSS; status %s\n",
-                    messageId >= 0 ? "terkirim" : "gagal dikirim");
+      Serial.printf("[MQTT] Terhubung ke broker WSS (RSSI: %d dBm); status %s\n",
+                    WiFi.RSSI(), messageId >= 0 ? "terkirim" : "gagal dikirim");
       break;
     }
 
@@ -190,8 +190,8 @@ bool publishMeterData(const MeterData &data) {
   ledStatusNotifyUpload();
   const bool published =
       esp_mqtt_client_publish(mqttClient, topic, payload, length, 0, 1) >= 0;
-  Serial.printf("[MQTT] Publish %s: %s\n", topic,
-                published ? "berhasil" : "gagal");
+  Serial.printf("[MQTT] Publish %s: %s (RSSI: %d dBm)\n", topic,
+                published ? "berhasil" : "gagal", WiFi.RSSI());
   if (published) ledStatusNotifyUploadSuccess();
   return published;
 }
