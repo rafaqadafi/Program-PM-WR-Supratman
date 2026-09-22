@@ -24,9 +24,9 @@ void setup() {
   wifiResetButtonBegin();
   wifiServiceBegin();
 
-  // Menunggu koneksi WiFi sebelum program lain boleh berjalan
+  // Menunggu koneksi WiFi dan IP valid sebelum program lain boleh berjalan
   Serial.println("[System] Menunggu koneksi WiFi...");
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED || WiFi.localIP() == IPAddress(0, 0, 0, 0)) {
     if (Serial.available() > 0) {
       const char c = static_cast<char>(Serial.read());
       if (c == 'R' || c == 'r') {
@@ -38,14 +38,14 @@ void setup() {
   }
   Serial.println("[System] WiFi terhubung! Menjalankan layanan lainnya...");
 
-  // Hardware Task Watchdog Timer diinisialisasi setelah WiFi terhubung
-  esp_task_wdt_init(Config::Watchdog::TIMEOUT_SECONDS, true);
-  esp_task_wdt_add(NULL);
-
   hermesAlertBegin();
   modbusRtuBegin();
   mqttServiceBegin();
   otaServiceBegin();
+
+  // Hardware Task Watchdog Timer diaktifkan setelah seluruh layanan siap
+  esp_task_wdt_init(Config::Watchdog::TIMEOUT_SECONDS, true);
+  esp_task_wdt_add(NULL);
 }
 
 void loop() {

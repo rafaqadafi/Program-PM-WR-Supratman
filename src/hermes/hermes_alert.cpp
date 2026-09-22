@@ -99,12 +99,12 @@ void hermesTask(void *) {
 
   // Jika booting sebelumnya disebabkan crash / WDT restart
   if (pendingBootAlert) {
+    pendingBootAlert = false;  // Reset sebelum kirim untuk mencegah bootloop jika crash
     vTaskDelay(pdMS_TO_TICKS(1500));  // Tunggu koneksi stabil
     const char *reasonStr = resetReasonToString(bootResetReason);
     postToHermes("WATCHDOG_OR_ABNORMAL_RESET",
                  "ESP32 restart otomatis terdeteksi akibat Watchdog atau Panic",
                  reasonStr);
-    pendingBootAlert = false;
   }
 
   AlertMessage msg;
@@ -132,7 +132,7 @@ void hermesAlertBegin() {
   }
 
   alertQueue = xQueueCreate(4, sizeof(AlertMessage));
-  xTaskCreate(hermesTask, "HermesAlert", 4096, nullptr, 1, nullptr);
+  xTaskCreate(hermesTask, "HermesAlert", 8192, nullptr, 1, nullptr);
 }
 
 void hermesSendAlert(const char *alert, const char *detail) {

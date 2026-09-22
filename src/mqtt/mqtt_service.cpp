@@ -233,5 +233,5 @@ void mqttTask(void *) {
 }  // namespace
 
 void mqttServiceBegin() {
-  xTaskCreatePinnedToCore(mqttTask, "MQTT", 5120, nullptr, 2, nullptr, 0);
+  xTaskCreatePinnedToCore(mqttTask, "MQTT", 8192, nullptr, 2, nullptr, 1);
 }
