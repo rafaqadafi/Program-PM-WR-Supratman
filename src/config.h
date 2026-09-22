@@ -70,6 +70,13 @@ namespace WiFiPortal {
 constexpr char NAME[] = "PM-WR-Supratman-Setup";
 constexpr char PASSWORD[] = "";
 constexpr uint16_t CONNECT_TIMEOUT_SECONDS = 20;
+
+// Konfigurasi IP Statis dari src/secret.h
+constexpr bool USE_STATIC_IP = Secret::USE_STATIC_IP;
+constexpr const char *STATIC_IP = Secret::STATIC_IP;
+constexpr const char *STATIC_GATEWAY = Secret::STATIC_GATEWAY;
+constexpr const char *STATIC_SUBNET = Secret::STATIC_SUBNET;
+constexpr const char *STATIC_DNS = Secret::STATIC_DNS;
 }  // namespace WiFiPortal
 
 namespace Mqtt {

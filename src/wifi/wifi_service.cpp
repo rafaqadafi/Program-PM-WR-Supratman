@@ -16,6 +16,23 @@ void wifiTask(void *) {
   WiFi.persistent(true);
   WiFi.setAutoReconnect(true);
 
+  if (Config::WiFiPortal::USE_STATIC_IP) {
+    IPAddress staticIP, staticGW, staticSN, staticDNS;
+    if (staticIP.fromString(Config::WiFiPortal::STATIC_IP) &&
+        staticGW.fromString(Config::WiFiPortal::STATIC_GATEWAY) &&
+        staticSN.fromString(Config::WiFiPortal::STATIC_SUBNET) &&
+        staticDNS.fromString(Config::WiFiPortal::STATIC_DNS)) {
+      wifiManager.setSTAStaticIPConfig(staticIP, staticGW, staticSN, staticDNS);
+      WiFi.config(staticIP, staticGW, staticSN, staticDNS);
+      Serial.printf("[WiFi] IP Statis aktif: %s (GW: %s, MASK: %s)\n",
+                    Config::WiFiPortal::STATIC_IP,
+                    Config::WiFiPortal::STATIC_GATEWAY,
+                    Config::WiFiPortal::STATIC_SUBNET);
+    } else {
+      Serial.println("[WiFi] Format IP Statis tidak valid, fallback ke DHCP");
+    }
+  }
+
   wifiManager.setConfigPortalBlocking(false);
   wifiManager.setConnectTimeout(Config::WiFiPortal::CONNECT_TIMEOUT_SECONDS);
   wifiManager.setConfigPortalTimeout(0);
