@@ -128,6 +128,16 @@ bool startMqttClient() {
   return true;
 }
 
+void stopAndDestroyMqttClient() {
+  if (mqttClient != nullptr) {
+    esp_mqtt_client_stop(mqttClient);
+    esp_mqtt_client_destroy(mqttClient);
+    mqttClient = nullptr;
+  }
+  mqttConnected.store(false);
+  ledStatusSetMqttConnected(false);
+}
+
 bool publishMeterData(const MeterData &data) {
   if (!mqttConnected.load() || mqttClient == nullptr || !data.online ||
       !data.dataReady) {
@@ -201,8 +211,58 @@ void mqttTask(void *) {
   uint32_t publishedSequence = 0;
   uint32_t previousThingSpeak = millis() -
                                 Config::ThingSpeak::UPDATE_INTERVAL_MS;
+  bool previousWifiConnected = true;
+  uint32_t continuousDisconnectStart = 0;
+  uint32_t lastClientRestart = millis();
 
   for (;;) {
+    const bool currentWifiConnected = (WiFi.status() == WL_CONNECTED);
+
+    // Deteksi WiFi baru saja pulih
+    if (currentWifiConnected && !previousWifiConnected) {
+      Serial.println("[MQTT] WiFi pulih, memicu reconnect MQTT segera...");
+      if (mqttClient != nullptr && !mqttConnected.load()) {
+        esp_mqtt_client_reconnect(mqttClient);
+      }
+      lastClientRestart = millis();
+    }
+    previousWifiConnected = currentWifiConnected;
+
+    // Watchdog & Self-Healing ketika WiFi terhubung
+    if (currentWifiConnected) {
+      if (mqttConnected.load()) {
+        continuousDisconnectStart = 0;
+        lastClientRestart = millis();
+      } else {
+        if (continuousDisconnectStart == 0) {
+          continuousDisconnectStart = millis();
+        }
+
+        // Level 2: Hard Reboot jika terputus berturut-turut melebihi batas (10 menit)
+        if (millis() - continuousDisconnectStart >=
+            Config::Mqtt::WATCHDOG_REBOOT_MS) {
+          Serial.println(
+              "[MQTT] Terputus >10 menit berturut-turut. Memulai reboot preventif...");
+          vTaskDelay(pdMS_TO_TICKS(1000));
+          ESP.restart();
+        }
+
+        // Level 1: Soft Restart client jika terputus melebihi batas (60 detik)
+        if (millis() - lastClientRestart >=
+            Config::Mqtt::WATCHDOG_SOFT_RESTART_MS) {
+          Serial.println(
+              "[MQTT] Terputus >60 detik padahal WiFi aktif. Reset dan buat ulang client...");
+          stopAndDestroyMqttClient();
+          vTaskDelay(pdMS_TO_TICKS(1000));
+          startMqttClient();
+          lastClientRestart = millis();
+        }
+      }
+    } else {
+      continuousDisconnectStart = 0;
+      lastClientRestart = millis();
+    }
+
     if (mqttConnected.load()) {
       MeterData data{};
       uint32_t sequence = 0;
@@ -212,7 +272,7 @@ void mqttTask(void *) {
       }
     }
 
-    if (WiFi.status() == WL_CONNECTED &&
+    if (currentWifiConnected &&
         millis() - previousThingSpeak >=
             Config::ThingSpeak::UPDATE_INTERVAL_MS) {
       MeterData thingSpeakData{};

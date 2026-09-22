@@ -89,6 +89,8 @@ constexpr const char *PASSWORD = Secret::MQTT_PASSWORD;
 constexpr const char *BASE_TOPIC = Secret::MQTT_BASE_TOPIC;
 constexpr const char *CLIENT_PREFIX = Secret::MQTT_CLIENT_PREFIX;
 constexpr uint32_t RECONNECT_INTERVAL_MS = 5000;
+constexpr uint32_t WATCHDOG_SOFT_RESTART_MS = 60000;  // 1 menit tanpa koneksi saat WiFi aktif -> soft restart client
+constexpr uint32_t WATCHDOG_REBOOT_MS = 600000;       // 10 menit gagal total saat WiFi aktif -> reboot ESP32
 
 // Pembagi W/VAR/VA sebelum dikirim sebagai kW/kVAR/kVA.
 constexpr float POWER_DIVISOR = 1000.0f;
