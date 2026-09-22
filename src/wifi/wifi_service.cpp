@@ -22,12 +22,14 @@ void wifiTask(void *) {
         staticGW.fromString(Config::WiFiPortal::STATIC_GATEWAY) &&
         staticSN.fromString(Config::WiFiPortal::STATIC_SUBNET) &&
         staticDNS.fromString(Config::WiFiPortal::STATIC_DNS)) {
+      IPAddress staticDNS2(8, 8, 8, 8);
       wifiManager.setSTAStaticIPConfig(staticIP, staticGW, staticSN, staticDNS);
-      WiFi.config(staticIP, staticGW, staticSN, staticDNS);
-      Serial.printf("[WiFi] IP Statis aktif: %s (GW: %s, MASK: %s)\n",
+      WiFi.config(staticIP, staticGW, staticSN, staticDNS, staticDNS2);
+      Serial.printf("[WiFi] IP Statis aktif: %s (GW: %s, MASK: %s, DNS: %s, 8.8.8.8)\n",
                     Config::WiFiPortal::STATIC_IP,
                     Config::WiFiPortal::STATIC_GATEWAY,
-                    Config::WiFiPortal::STATIC_SUBNET);
+                    Config::WiFiPortal::STATIC_SUBNET,
+                    Config::WiFiPortal::STATIC_DNS);
     } else {
       Serial.println("[WiFi] Format IP Statis tidak valid, fallback ke DHCP");
     }
@@ -53,8 +55,11 @@ void wifiTask(void *) {
     if (currentStatus != previousStatus) {
       previousStatus = currentStatus;
       if (currentStatus == WL_CONNECTED) {
-        Serial.print("[WiFi] Terhubung, IP: ");
-        Serial.println(WiFi.localIP());
+        Serial.println("[WiFi] Terhubung!");
+        Serial.printf("[WiFi] IP      : %s\n", WiFi.localIP().toString().c_str());
+        Serial.printf("[WiFi] Gateway : %s\n", WiFi.gatewayIP().toString().c_str());
+        Serial.printf("[WiFi] Subnet  : %s\n", WiFi.subnetMask().toString().c_str());
+        Serial.printf("[WiFi] DNS     : %s\n", WiFi.dnsIP().toString().c_str());
         ledStatusSetWifiConnected(true);
       } else {
         Serial.printf("[WiFi] Belum terhubung; portal %s aktif\n",
