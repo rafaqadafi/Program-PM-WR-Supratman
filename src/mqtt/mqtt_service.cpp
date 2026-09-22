@@ -31,7 +31,7 @@ void mqttEventHandler(void *, esp_event_base_t, int32_t eventId,
       mqttConnected.store(true);
       ledStatusSetMqttConnected(true);
       const int messageId = esp_mqtt_client_publish(
-          event->client, statusTopic, "online", 0, 0, 1);
+          event->client, statusTopic, "{\"status\":\"ONLINE\"}", 0, 0, 1);
       Serial.printf("[MQTT] Terhubung ke broker WSS (RSSI: %d dBm); status %s\n",
                     WiFi.RSSI(), messageId >= 0 ? "terkirim" : "gagal dikirim");
       break;
@@ -89,7 +89,7 @@ bool startMqttClient() {
                             ? Config::Mqtt::PASSWORD
                             : nullptr;
   mqttConfig.lwt_topic = statusTopic;
-  mqttConfig.lwt_msg = "offline";
+  mqttConfig.lwt_msg = "{\"status\":\"OFFLINE\"}";
   mqttConfig.lwt_qos = 0;
   mqttConfig.lwt_retain = 1;
   mqttConfig.keepalive = 30;
