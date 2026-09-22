@@ -22,10 +22,10 @@ void wifiTask(void *) {
         staticGW.fromString(Config::WiFiPortal::STATIC_GATEWAY) &&
         staticSN.fromString(Config::WiFiPortal::STATIC_SUBNET) &&
         staticDNS.fromString(Config::WiFiPortal::STATIC_DNS)) {
-      IPAddress staticDNS2(8, 8, 8, 8);
+      IPAddress staticDNS2(1, 0, 0, 1);
       wifiManager.setSTAStaticIPConfig(staticIP, staticGW, staticSN, staticDNS);
       WiFi.config(staticIP, staticGW, staticSN, staticDNS, staticDNS2);
-      Serial.printf("[WiFi] IP Statis aktif: %s (GW: %s, MASK: %s, DNS: %s, 8.8.8.8)\n",
+      Serial.printf("[WiFi] IP Statis aktif: %s (GW: %s, MASK: %s, DNS: %s, 1.0.0.1)\n",
                     Config::WiFiPortal::STATIC_IP,
                     Config::WiFiPortal::STATIC_GATEWAY,
                     Config::WiFiPortal::STATIC_SUBNET,

@@ -93,7 +93,7 @@ bool startMqttClient() {
   mqttConfig.lwt_msg = "{\"status\":\"OFFLINE\"}";
   mqttConfig.lwt_qos = 0;
   mqttConfig.lwt_retain = 1;
-  mqttConfig.keepalive = 30;
+  mqttConfig.keepalive = 15;
   mqttConfig.disable_auto_reconnect = false;
   mqttConfig.buffer_size = 2048;
   mqttConfig.out_buffer_size = 2048;
@@ -101,7 +101,7 @@ bool startMqttClient() {
   mqttConfig.reconnect_timeout_ms = Config::Mqtt::RECONNECT_INTERVAL_MS;
   mqttConfig.protocol_ver = MQTT_PROTOCOL_V_3_1_1;
   mqttConfig.skip_cert_common_name_check = false;
-  mqttConfig.network_timeout_ms = 10000;
+  mqttConfig.network_timeout_ms = 15000;
 
   mqttClient = esp_mqtt_client_init(&mqttConfig);
   if (mqttClient == nullptr) {
