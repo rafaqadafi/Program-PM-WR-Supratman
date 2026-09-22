@@ -1,8 +1,9 @@
 #include "thingspeak_service.h"
 
 #include <Arduino.h>
+#include <HTTPClient.h>
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
+#include <WiFiClient.h>
 #include <string.h>
 
 #include "config.h"
@@ -10,9 +11,6 @@
 #include "modbus/modbus_rtu.h"
 
 namespace {
-constexpr char THINGSPEAK_HOST[] = "api.thingspeak.com";
-constexpr uint16_t THINGSPEAK_PORT = 443;
-
 float averageVoltage(const MeterData &data) {
   return (data.phase[0].voltage + data.phase[1].voltage +
           data.phase[2].voltage) /
@@ -20,50 +18,49 @@ float averageVoltage(const MeterData &data) {
 }
 
 bool thingSpeakUpload(const MeterData &data) {
-  WiFiClientSecure client;
-  client.setInsecure();
-  client.setTimeout(10000);
+  WiFiClient client;
+  client.setTimeout(5000);
 
-  if (!client.connect(THINGSPEAK_HOST, THINGSPEAK_PORT)) {
-    Serial.println("[ThingSpeak] Koneksi HTTPS gagal");
-    return false;
-  }
-
-  char request[640];
+  char url[512];
   const int length = snprintf(
-      request, sizeof(request),
-      "GET /update?api_key=%s&field1=%.3f&field2=%.1f&field3=%.1f&field4=%.3f"
-      "&field5=%.3f&field6=%.3f&field7=%.3f&field8=%.2f HTTP/1.1\r\n"
-      "Host: %s\r\nConnection: close\r\n\r\n",
+      url, sizeof(url),
+      "http://api.thingspeak.com/update?api_key=%s&field1=%.3f&field2=%.1f"
+      "&field3=%.1f&field4=%.3f&field5=%.3f&field6=%.3f&field7=%.3f&field8=%.2f",
       Config::ThingSpeak::WRITE_API_KEY, data.totalEnergy, data.totalActive,
       data.totalApparent, data.powerFactor, data.phase[0].current,
-      data.phase[1].current, data.phase[2].current, averageVoltage(data),
-      THINGSPEAK_HOST);
+      data.phase[1].current, data.phase[2].current, averageVoltage(data));
 
-  if (length < 0 || length >= static_cast<int>(sizeof(request))) {
-    client.stop();
-    Serial.println("[ThingSpeak] Request terlalu panjang");
+  if (length < 0 || length >= static_cast<int>(sizeof(url))) {
+    Serial.println("[ThingSpeak] URL terlalu panjang");
     return false;
   }
 
-  client.print(request);
-
-  char statusLine[64] = {};
-  const size_t statusLength =
-      client.readBytesUntil('\n', statusLine, sizeof(statusLine) - 1);
-  statusLine[statusLength] = '\0';
-  const bool accepted = strstr(statusLine, " 200 ") != nullptr;
-
-  const uint32_t startedAt = millis();
-  while (client.connected() && millis() - startedAt < 3000UL) {
-    while (client.available()) client.read();
-    vTaskDelay(pdMS_TO_TICKS(10));
+  HTTPClient http;
+  if (!http.begin(client, url)) {
+    Serial.println("[ThingSpeak] Gagal inisialisasi HTTPClient");
+    return false;
   }
-  client.stop();
+  http.setTimeout(10000);
 
-  Serial.printf("[ThingSpeak] Update 8 field %s\n",
-                accepted ? "berhasil" : "ditolak");
-  return accepted;
+  const int httpCode = http.GET();
+  String response = (httpCode > 0) ? http.getString() : "";
+  http.end();
+
+  response.trim();
+  const long entryId = response.toInt();
+  const bool success = (httpCode == HTTP_CODE_OK && entryId > 0);
+
+  if (success) {
+    Serial.printf("[ThingSpeak] Update 8 field berhasil (Entry ID: %ld)\n", entryId);
+  } else if (httpCode == HTTP_CODE_OK && entryId == 0) {
+    Serial.println("[ThingSpeak] Ditolak oleh server (Rate limit / interval < 15 detik)");
+  } else if (httpCode < 0) {
+    Serial.printf("[ThingSpeak] Gagal koneksi HTTP: %s\n", http.errorToString(httpCode).c_str());
+  } else {
+    Serial.printf("[ThingSpeak] Gagal, HTTP respon: %d\n", httpCode);
+  }
+
+  return success;
 }
 
 void thingspeakTask(void *) {
